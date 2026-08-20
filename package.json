@@ -1,0 +1,30 @@
+{
+  "name": "song-download-tool",
+  "version": "1.0.0",
+  "description": "Full-stack YouTube & Song Search metadata preview and download tool",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "youtube",
+    "song-downloader",
+    "metadata",
+    "express",
+    "yt-search"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "archiver": "^8.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "ffmpeg-static": "^5.2.0",
+    "sanitize-filename": "^1.6.3",
+    "uuid": "^11.1.0",
+    "yt-search": "^2.12.1"
+  }
+}

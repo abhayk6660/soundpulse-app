@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SoundPulse - Song & YouTube Track Download Tool</title>
+  <meta name="description" content="Identify exact tracks by song name or YouTube URL, preview metadata, verify content permissions, and download permitted MP3 audio or MP4 video files safely.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="glow-bg"></div>
+
+  <!-- Main Container -->
+  <div class="app-container">
+    
+    <!-- App Header -->
+    <header class="app-header">
+      <div class="logo">
+        <div class="logo-icon">
+          <i class="fa-solid fa-music"></i>
+        </div>
+        <div class="logo-text">
+          <h1>SoundPulse</h1>
+          <span class="tagline">Song & Media Download Tool</span>
+        </div>
+      </div>
+      <div class="header-badges">
+        <span class="badge badge-primary"><i class="fa-solid fa-shield-halved"></i> Permitted Downloads</span>
+        <span class="badge badge-accent"><i class="fa-solid fa-bolt"></i> High-Speed Engine</span>
+      </div>
+    </header>
+
+    <!-- Main Navigation Tabs -->
+    <nav class="search-tabs" id="searchTabs">
+      <button class="tab-btn active" id="tabSongName" data-tab="song-mode">
+        <i class="fa-solid fa-magnifying-glass"></i> Search Song Name
+      </button>
+      <button class="tab-btn" id="tabYoutubeUrl" data-tab="url-mode">
+        <i class="fa-brands fa-youtube"></i> YouTube URL
+      </button>
+      <button class="tab-btn" id="tabPlaylistUrl" data-tab="playlist-mode">
+        <i class="fa-solid fa-list-check"></i> YouTube Playlist
+      </button>
+    </nav>
+
+    <!-- Search Section -->
+    <main class="main-content">
+      
+      <!-- MODE 1: Song Name Search -->
+      <section class="tab-content active" id="songModeSection">
+        <form class="search-box-container" id="songSearchForm">
+          <div class="input-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="songSearchInput" placeholder="Enter song title, artist, or album (e.g., Lofi Chill Beats)..." autocomplete="off" required>
+            <button type="button" class="clear-btn hidden" id="clearSongInput"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <button type="submit" class="btn btn-primary" id="searchSubmitBtn">
+            <i class="fa-solid fa-search"></i> Search Tracks
+          </button>
+        </form>
+        
+        <!-- Search Hints -->
+        <div class="search-hints">
+          <span><i class="fa-solid fa-circle-info"></i> Tip: Search by exact track name and artist for best accuracy.</span>
+        </div>
+
+        <!-- Skeleton Loader -->
+        <div class="skeleton-grid hidden" id="searchSkeleton">
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+
+        <!-- Search Results Grid -->
+        <div class="results-header hidden" id="resultsHeader">
+          <h2><i class="fa-solid fa-list-ul"></i> Select Exact Track</h2>
+          <span class="results-count" id="resultsCount">Found 0 matches</span>
+        </div>
+
+        <div class="results-grid" id="resultsGrid"></div>
+      </section>
+
+      <!-- MODE 2: YouTube URL Input -->
+      <section class="tab-content" id="urlModeSection">
+        <form class="search-box-container" id="urlInputForm">
+          <div class="input-wrapper">
+            <i class="fa-brands fa-youtube search-icon youtube-color"></i>
+            <input type="url" id="urlInput" placeholder="Paste YouTube video or Shorts link (e.g., https://www.youtube.com/watch?v=...)" autocomplete="off" required>
+            <button type="button" class="clear-btn hidden" id="clearUrlInput"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <button type="submit" class="btn btn-primary" id="fetchUrlBtn">
+            <i class="fa-solid fa-bolt"></i> Inspect Track
+          </button>
+        </form>
+
+        <!-- URL Preview Skeleton -->
+        <div class="url-skeleton hidden" id="urlSkeleton">
+          <div class="skeleton-preview"></div>
+        </div>
+
+        <!-- URL Track Preview Card -->
+        <div class="detected-track-container hidden" id="detectedTrackContainer"></div>
+      </section>
+
+      <!-- MODE 3: YouTube Playlist Download -->
+      <section class="tab-content" id="playlistModeSection">
+        <form class="search-box-container" id="playlistInputForm">
+          <div class="input-wrapper">
+            <i class="fa-solid fa-list-check search-icon playlist-color"></i>
+            <input type="url" id="playlistInput" placeholder="Paste YouTube Playlist link (e.g., https://www.youtube.com/playlist?list=...)" autocomplete="off" required>
+            <button type="button" class="clear-btn hidden" id="clearPlaylistInput"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <button type="submit" class="btn btn-primary" id="fetchPlaylistBtn">
+            <i class="fa-solid fa-list-ul"></i> Inspect Playlist
+          </button>
+        </form>
+
+        <!-- Playlist Skeleton Loader -->
+        <div class="url-skeleton hidden" id="playlistSkeleton">
+          <div class="skeleton-preview"></div>
+        </div>
+
+        <!-- Playlist Container -->
+        <div class="playlist-container hidden" id="playlistContainer"></div>
+      </section>
+
+      <!-- Download Configuration & Confirmation Modal / Card -->
+      <section class="download-section hidden" id="downloadSection">
+        <div class="glass-card download-card">
+          <div class="card-header">
+            <h3><i class="fa-solid fa-circle-check text-success"></i> Confirm Track Selection</h3>
+            <button type="button" class="close-download-btn" id="closeDownloadSection"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+
+          <!-- Selected Track Highlight -->
+          <div class="selected-track-detail" id="selectedTrackDetail"></div>
+
+          <!-- Format Selection -->
+          <div class="config-group">
+            <label class="config-label"><i class="fa-solid fa-sliders"></i> Select Output Format</label>
+            <div class="format-options">
+              <label class="format-card selected" id="formatMp3Card">
+                <input type="radio" name="outputFormat" value="mp3" checked>
+                <div class="format-info">
+                  <i class="fa-solid fa-headphones format-icon"></i>
+                  <div>
+                    <strong>MP3 Audio</strong>
+                    <p>High quality audio stream (Permitted media)</p>
+                  </div>
+                </div>
+              </label>
+
+              <label class="format-card" id="formatMp4Card">
+                <input type="radio" name="outputFormat" value="mp4">
+                <div class="format-info">
+                  <i class="fa-solid fa-film format-icon"></i>
+                  <div>
+                    <strong>MP4 Video</strong>
+                    <p>Full HD video with audio (Permitted media)</p>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Copyright & Permission Checkbox -->
+          <div class="permission-box" id="permissionBox">
+            <div class="permission-checkbox-wrapper">
+              <input type="checkbox" id="permissionCheckbox">
+              <label for="permissionCheckbox">
+                <strong>Legal Rights & Rights Confirmation:</strong> I confirm I own the rights, have explicit creator permission, or this content is released under Creative Commons / Public Domain for download.
+              </label>
+            </div>
+            <div class="permission-notice" id="permissionNotice">
+              <i class="fa-solid fa-shield-cat"></i> Content without legal permission or under restricted commercial copyrights will not be downloaded.
+            </div>
+          </div>
+
+          <!-- Action Button & Download Progress -->
+          <div class="action-area">
+            <button class="btn btn-action" id="startDownloadBtn">
+              <i class="fa-solid fa-download"></i> Download Permitted Content
+            </button>
+          </div>
+
+          <!-- Progress Bar Box -->
+          <div class="progress-box hidden" id="progressBox">
+            <div class="progress-info">
+              <span id="progressStatusText"><i class="fa-solid fa-spinner fa-spin"></i> Preparing download job...</span>
+              <span id="progressPercent">0%</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Toast Notification Container -->
+      <div class="toast-container" id="toastContainer"></div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p><i class="fa-solid fa-copyright"></i> SoundPulse Media Download Engine &bull; Respect Creator Copyrights &amp; Terms of Service</p>
+    </footer>
+
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

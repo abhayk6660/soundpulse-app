@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: soundpulse-app
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: TEMP_DIR
+        value: ./temp_downloads
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      - key: DOWNLOAD_RATE_LIMIT_MAX
+        value: 10
