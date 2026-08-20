@@ -189,8 +189,7 @@ function executeDownload(jobState) {
     ytDlpArgs.push('--ffmpeg-location', ffmpegPath);
   }
 
-  // Pass Node as JS runtime & enable remote component challenge solver for YouTube JS de-scrambling
-  ytDlpArgs.push('--js-runtimes', 'node', '--remote-components', 'ejs:github', '--no-check-certificates');
+  ytDlpArgs.push('--no-check-certificates', '--no-warnings');
 
   if (jobState.format === 'mp3') {
     // Audio extraction parameters
@@ -203,9 +202,9 @@ function executeDownload(jobState) {
       targetUrl
     );
   } else {
-    // Video parameters (MP4 combined audio/video or best mp4 format)
+    // Video parameters (MP4 combined audio/video or best video format)
     ytDlpArgs.push(
-      '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best',
+      '-f', 'bestvideo+bestaudio/best',
       '--recode-video', 'mp4',
       '--no-playlist',
       '-o', jobState.targetFilePath,
@@ -356,12 +355,12 @@ async function executePlaylistDownload(jobState, tracks) {
     if (ffmpegPath && fs.existsSync(ffmpegPath)) {
       ytDlpArgs.push('--ffmpeg-location', ffmpegPath);
     }
-    ytDlpArgs.push('--js-runtimes', 'node', '--remote-components', 'ejs:github', '--no-check-certificates');
+    ytDlpArgs.push('--no-check-certificates', '--no-warnings');
 
     if (jobState.format === 'mp3') {
       ytDlpArgs.push('-x', '--audio-format', 'mp3', '--audio-quality', '0', '--no-playlist', '-o', trackFilePath, targetUrl);
     } else {
-      ytDlpArgs.push('-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best', '--recode-video', 'mp4', '--no-playlist', '-o', trackFilePath, targetUrl);
+      ytDlpArgs.push('-f', 'bestvideo+bestaudio/best', '--recode-video', 'mp4', '--no-playlist', '-o', trackFilePath, targetUrl);
     }
 
     try {

@@ -254,14 +254,14 @@ function extractPlaylistId(input) {
   if (!input || typeof input !== 'string') return null;
   const trimmed = input.trim();
   
-  if (/^[a-zA-Z0-9_-]{12,64}$/.test(trimmed) && (trimmed.startsWith('PL') || trimmed.startsWith('RD') || trimmed.startsWith('OLAK') || trimmed.startsWith('FL'))) {
+  if (/^[a-zA-Z0-9_-]{10,80}$/.test(trimmed) && (trimmed.startsWith('PL') || trimmed.startsWith('RD') || trimmed.startsWith('OLAK') || trimmed.startsWith('FL') || trimmed.startsWith('UU') || trimmed.startsWith('LL') || trimmed.startsWith('TL') || trimmed.startsWith('CL'))) {
     return trimmed;
   }
 
   try {
     const urlObj = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
     const listParam = urlObj.searchParams.get('list');
-    if (listParam && /^[a-zA-Z0-9_-]{12,64}$/.test(listParam)) {
+    if (listParam && /^[a-zA-Z0-9_-]{10,80}$/.test(listParam)) {
       return listParam;
     }
   } catch (e) {}
