@@ -189,6 +189,9 @@ function executeDownload(jobState) {
     ytDlpArgs.push('--ffmpeg-location', ffmpegPath);
   }
 
+  // Pass Node as JS runtime & enable remote component challenge solver for YouTube JS de-scrambling
+  ytDlpArgs.push('--js-runtimes', 'node', '--remote-components', 'ejs:github', '--no-check-certificates');
+
   if (jobState.format === 'mp3') {
     // Audio extraction parameters
     ytDlpArgs.push(
@@ -202,7 +205,8 @@ function executeDownload(jobState) {
   } else {
     // Video parameters (MP4 combined audio/video or best mp4 format)
     ytDlpArgs.push(
-      '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+      '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best',
+      '--recode-video', 'mp4',
       '--no-playlist',
       '-o', jobState.targetFilePath,
       targetUrl
@@ -215,7 +219,6 @@ function executeDownload(jobState) {
 
   child.stdout.on('data', (data) => {
     const text = data.toString();
-    // Parse progress percentage e.g. [download]  45.2% of ~ 5.12MiB at 1.23MiB/s ETA 00:03
     const match = text.match(/\[download\]\s+([\d\.]+)%/);
     if (match && match[1]) {
       const pct = parseFloat(match[1]);
@@ -236,7 +239,14 @@ function executeDownload(jobState) {
   });
 
   child.on('close', (code) => {
-    if (code === 0 && fs.existsSync(jobState.targetFilePath)) {
+    const filesInFolder = fs.existsSync(jobState.jobFolder) ? fs.readdirSync(jobState.jobFolder) : [];
+    const createdFile = filesInFolder.find(f => !f.endsWith('.zip') && !fs.statSync(path.join(jobState.jobFolder, f)).isDirectory());
+
+    if (code === 0 && (fs.existsSync(jobState.targetFilePath) || createdFile)) {
+      if (!fs.existsSync(jobState.targetFilePath) && createdFile) {
+        jobState.targetFilePath = path.join(jobState.jobFolder, createdFile);
+        jobState.outputFilename = createdFile;
+      }
       console.log(`[Downloader Complete ${jobState.jobId}]: ${jobState.outputFilename}`);
       jobState.status = 'completed';
       jobState.progress = 100;
@@ -346,19 +356,25 @@ async function executePlaylistDownload(jobState, tracks) {
     if (ffmpegPath && fs.existsSync(ffmpegPath)) {
       ytDlpArgs.push('--ffmpeg-location', ffmpegPath);
     }
+    ytDlpArgs.push('--js-runtimes', 'node', '--remote-components', 'ejs:github', '--no-check-certificates');
 
     if (jobState.format === 'mp3') {
       ytDlpArgs.push('-x', '--audio-format', 'mp3', '--audio-quality', '0', '--no-playlist', '-o', trackFilePath, targetUrl);
     } else {
-      ytDlpArgs.push('-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best', '--no-playlist', '-o', trackFilePath, targetUrl);
+      ytDlpArgs.push('-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best', '--recode-video', 'mp4', '--no-playlist', '-o', trackFilePath, targetUrl);
     }
 
     try {
       await new Promise((resolve, reject) => {
         const child = spawn(cmd, ytDlpArgs, { windowsHide: true });
         child.on('close', (code) => {
-          if (code === 0 && fs.existsSync(trackFilePath)) resolve();
-          else reject(new Error(`Failed to download track ${track.title} (code ${code})`));
+          // Check if file exists under trackFilePath or any generated media file in mediaSubfolder
+          const downloadedFiles = fs.existsSync(jobState.mediaSubfolder) ? fs.readdirSync(jobState.mediaSubfolder) : [];
+          if (code === 0 && (fs.existsSync(trackFilePath) || downloadedFiles.length > jobState.completedTracks)) {
+            resolve();
+          } else {
+            reject(new Error(`Failed to download track ${track.title} (exit code ${code})`));
+          }
         });
         child.on('error', reject);
       });
@@ -368,10 +384,19 @@ async function executePlaylistDownload(jobState, tracks) {
     }
   }
 
+  // Check if any tracks were downloaded into the folder
+  const downloadedFiles = fs.existsSync(jobState.mediaSubfolder) ? fs.readdirSync(jobState.mediaSubfolder) : [];
+  if (downloadedFiles.length === 0) {
+    console.error(`[Playlist Downloader Error ${jobState.jobId}]: No tracks were successfully downloaded.`);
+    jobState.status = 'failed';
+    jobState.error = 'None of the selected tracks could be processed or downloaded. Check network connection or content restrictions.';
+    return;
+  }
+
   // Compress downloaded files into Zip Archive
   jobState.status = 'archiving';
   jobState.progress = 90;
-  console.log(`[Playlist Downloader] Creating Zip Archive for Job ${jobState.jobId}...`);
+  console.log(`[Playlist Downloader] Creating Zip Archive for Job ${jobState.jobId} (${downloadedFiles.length} files)...`);
 
   try {
     await createZipArchive(jobState.mediaSubfolder, jobState.targetFilePath);
@@ -391,6 +416,14 @@ async function executePlaylistDownload(jobState, tracks) {
 function createZipArchive(sourceDir, outPath) {
   const archiver = require('archiver');
   return new Promise((resolve, reject) => {
+    if (!fs.existsSync(sourceDir)) {
+      return reject(new Error('Source media directory does not exist.'));
+    }
+    const files = fs.readdirSync(sourceDir);
+    if (!files || files.length === 0) {
+      return reject(new Error('No media files found to package into ZIP archive.'));
+    }
+
     const output = fs.createWriteStream(outPath);
     const archive = (typeof archiver === 'function')
       ? archiver('zip', { zlib: { level: 6 } })
