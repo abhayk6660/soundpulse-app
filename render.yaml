@@ -15,6 +15,6 @@ services:
       - key: RATE_LIMIT_WINDOW_MS
         value: 900000
       - key: RATE_LIMIT_MAX_REQUESTS
-        value: 100
+        value: 50000
       - key: DOWNLOAD_RATE_LIMIT_MAX
-        value: 10
+        value: 1000

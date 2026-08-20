@@ -20,10 +20,10 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static frontend files from /public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Rate Limiter Configurations
+// Rate Limiter Configurations (Ultra-High Allowance)
 const globalLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 mins
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '50000', 10), // 50,000 requests
   message: { success: false, error: 'Too many requests from this IP. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false
@@ -31,13 +31,13 @@ const globalLimiter = rateLimit({
 
 const searchLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 30, // 30 search queries per minute
+  max: 5000, // 5,000 search queries per minute
   message: { success: false, error: 'Search rate limit exceeded. Please wait a moment before searching again.' }
 });
 
 const downloadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.DOWNLOAD_RATE_LIMIT_MAX || '10', 10),
+  max: parseInt(process.env.DOWNLOAD_RATE_LIMIT_MAX || '1000', 10), // 1,000 downloads per 15 min
   message: { success: false, error: 'Download limit reached for this session. Please wait before requesting another download.' }
 });
 
