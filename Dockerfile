@@ -1,9 +1,10 @@
 # Base image with Node.js and Python pre-installed
 FROM node:20-slim
 
-# Install system dependencies: Python 3, pip, ffmpeg, curl
+# Install system dependencies: Python 3, python-is-python3, ffmpeg, curl
 RUN apt-get update && apt-get install -y \
     python3 \
+    python-is-python3 \
     python3-pip \
     python3-venv \
     ffmpeg \
@@ -18,7 +19,7 @@ WORKDIR /app
 
 # Copy package files and install dependencies
 COPY package*.json ./
-RUN npm install --production
+RUN npm install --omit=dev
 
 # Copy application source code
 COPY . .
