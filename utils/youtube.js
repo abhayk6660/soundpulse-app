@@ -1,6 +1,7 @@
 const ytSearch = require('yt-search');
 const { execFile } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 /**
  * YouTube URL Regex Patterns
@@ -237,6 +238,7 @@ async function getVideoMetadata(input) {
       const cloudFlags = [
         '--remote-components', 'ejs:github',
         '--js-runtimes', 'node',
+        '--extractor-args', 'youtube:player_client=web_embedded,web',
         '--dump-json',
         '--no-warnings',
         '--no-check-certificates',
@@ -364,6 +366,7 @@ async function getPlaylistMetadata(input) {
     const cloudFlags = [
       '--remote-components', 'ejs:github',
       '--js-runtimes', 'node',
+      '--extractor-args', 'youtube:player_client=web_embedded,web',
       '--no-warnings',
       '--no-check-certificates'
     ];
