@@ -134,12 +134,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // Global in-memory track registry to prevent HTML attribute JSON corruption
+  const trackStore = new Map();
+
   // Render Search Results Grid
   function renderSearchResults(tracks) {
     if (!tracks || tracks.length === 0) {
       showToast('No matching song tracks found.', 'warning');
       return;
     }
+
+    tracks.forEach(t => trackStore.set(t.id, t));
 
     resultsCount.textContent = `Found ${tracks.length} matching tracks`;
     resultsHeader.classList.remove('hidden');
@@ -163,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
               ${escapeHtml(track.licenseInfo)}
             </span>
           </div>
-          <button class="select-track-btn" data-track='${escapeAttr(JSON.stringify(track))}'>
+          <button class="select-track-btn" data-id="${escapeAttr(track.id)}">
             <i class="fa-solid fa-circle-play"></i> Select Track
           </button>
         </div>
@@ -173,8 +178,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Attach click listeners to "Select Track" buttons
     resultsGrid.querySelectorAll('.select-track-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const trackData = JSON.parse(btn.getAttribute('data-track'));
-        selectTrackForDownload(trackData);
+        const id = btn.getAttribute('data-id');
+        const trackData = trackStore.get(id);
+        if (trackData) {
+          selectTrackForDownload(trackData);
+        } else {
+          showToast('Could not load track information.', 'error');
+        }
       });
     });
   }
@@ -290,6 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Render Playlist Inspection Card & Track List Table
   function renderPlaylistContainer(playlist) {
     currentSelectedPlaylist = playlist;
+    playlist.tracks.forEach(t => trackStore.set(t.id, t));
 
     const tracksHtml = playlist.tracks.map((track, idx) => `
       <div class="playlist-track-row">
@@ -301,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="track-row-artist">${escapeHtml(track.artist)}</span>
         </div>
         <span class="track-row-duration">${escapeHtml(track.duration)}</span>
-        <button class="quick-dl-btn" data-track='${escapeAttr(JSON.stringify(track))}'>
+        <button class="quick-dl-btn" data-id="${escapeAttr(track.id)}">
           <i class="fa-solid fa-download"></i> Download
         </button>
       </div>
@@ -343,8 +354,9 @@ document.addEventListener('DOMContentLoaded', () => {
     playlistContainer.querySelectorAll('.quick-dl-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const trackData = JSON.parse(btn.getAttribute('data-track'));
-        selectTrackForDownload(trackData);
+        const id = btn.getAttribute('data-id');
+        const trackData = trackStore.get(id);
+        if (trackData) selectTrackForDownload(trackData);
       });
     });
 
