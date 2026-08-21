@@ -235,6 +235,7 @@ async function getVideoMetadata(input) {
   try {
     const jsonOutput = await new Promise((resolve, reject) => {
       const cloudFlags = [
+        '--remote-components', 'ejs:github',
         '--js-runtimes', 'node',
         '--dump-json',
         '--no-warnings',
@@ -361,6 +362,7 @@ async function getPlaylistMetadata(input) {
 
   return new Promise((resolve, reject) => {
     const cloudFlags = [
+      '--remote-components', 'ejs:github',
       '--js-runtimes', 'node',
       '--no-warnings',
       '--no-check-certificates'

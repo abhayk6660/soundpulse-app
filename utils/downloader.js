@@ -188,6 +188,7 @@ function executeDownload(jobState) {
   }
 
   const options = {
+    remoteComponents: 'ejs:github',
     jsRuntimes: 'node',
     noCheckCertificates: true,
     noWarnings: true,
@@ -355,6 +356,7 @@ async function executePlaylistDownload(jobState, tracks) {
     const targetUrl = `https://www.youtube.com/watch?v=${track.id}`;
 
     const options = {
+      remoteComponents: 'ejs:github',
       jsRuntimes: 'node',
       noCheckCertificates: true,
       noWarnings: true,
