@@ -238,14 +238,18 @@ async function getVideoMetadata(input) {
         '--dump-json',
         '--no-warnings',
         '--no-check-certificates',
-        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        '--extractor-args', 'youtube:player_client=android,web',
         `https://www.youtube.com/watch?v=${videoId}`
       ];
       execFile('yt-dlp', cloudFlags, (err, stdout) => {
         if (err) {
-          execFile('python', ['-m', 'yt_dlp', ...cloudFlags], (err2, stdout2) => {
-            if (err2) return reject(err2);
+          execFile('python3', ['-m', 'yt_dlp', ...cloudFlags], (err2, stdout2) => {
+            if (err2) {
+              execFile('python', ['-m', 'yt_dlp', ...cloudFlags], (err3, stdout3) => {
+                if (err3) return reject(err3);
+                resolve(stdout3);
+              });
+              return;
+            }
             resolve(stdout2);
           });
           return;
@@ -347,19 +351,25 @@ async function getPlaylistMetadata(input) {
   return new Promise((resolve, reject) => {
     const cloudFlags = [
       '--no-warnings',
-      '--no-check-certificates',
-      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      '--extractor-args', 'youtube:player_client=android,web'
+      '--no-check-certificates'
     ];
     let cmd = 'yt-dlp';
     let args = ['--dump-json', '--flat-playlist', ...cloudFlags, targetUrl];
 
     execFile(cmd, args, { maxBuffer: 20 * 1024 * 1024 }, (err, stdout) => {
       if (err) {
-        cmd = 'python';
+        cmd = 'python3';
         args = ['-m', 'yt_dlp', '--dump-json', '--flat-playlist', ...cloudFlags, targetUrl];
         execFile(cmd, args, { maxBuffer: 20 * 1024 * 1024 }, (err2, stdout2) => {
-          if (err2) return reject(new Error(`Failed to fetch playlist metadata: ${err2.message}`));
+          if (err2) {
+            cmd = 'python';
+            args = ['-m', 'yt_dlp', '--dump-json', '--flat-playlist', ...cloudFlags, targetUrl];
+            execFile(cmd, args, { maxBuffer: 20 * 1024 * 1024 }, (err3, stdout3) => {
+              if (err3) return reject(new Error(`Failed to fetch playlist metadata: ${err3.message}`));
+              parsePlaylistOutput(playlistId, stdout3, resolve, reject);
+            });
+            return;
+          }
           parsePlaylistOutput(playlistId, stdout2, resolve, reject);
         });
         return;

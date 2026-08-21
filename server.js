@@ -12,6 +12,9 @@ const { prepareDownloadJob, preparePlaylistDownloadJob, getJobStatus, cleanupJob
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust reverse proxy headers (Render/Cloudflare/Railway)
+app.set('trust proxy', 1);
+
 // Security & Cross-Origin Middleware
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));

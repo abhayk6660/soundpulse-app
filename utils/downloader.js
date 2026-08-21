@@ -73,15 +73,12 @@ function getYtDlpCommand() {
     execSync('yt-dlp --version', { stdio: 'ignore' });
     return { cmd: 'yt-dlp', argsPrefix: [] };
   } catch (e) {
-    // Try python -m yt_dlp
     try {
-      execSync('python -m yt_dlp --version', { stdio: 'ignore' });
-      return { cmd: 'python', argsPrefix: ['-m', 'yt_dlp'] };
+      execSync('python3 -m yt_dlp --version', { stdio: 'ignore' });
+      return { cmd: 'python3', argsPrefix: ['-m', 'yt_dlp'] };
     } catch (e2) {
-      // Try installing python module automatically
       try {
-        console.log('[Downloader] Installing yt-dlp via python pip...');
-        execSync('python -m pip install yt-dlp', { stdio: 'inherit' });
+        execSync('python -m yt_dlp --version', { stdio: 'ignore' });
         return { cmd: 'python', argsPrefix: ['-m', 'yt_dlp'] };
       } catch (e3) {
         console.warn('[Downloader] Warning: yt-dlp is not available on PATH or python pip.');
@@ -189,13 +186,7 @@ function executeDownload(jobState) {
     ytDlpArgs.push('--ffmpeg-location', ffmpegPath);
   }
 
-  // Cloud & Render compatibility flags (bypasses YouTube data-center IP blocks)
-  ytDlpArgs.push(
-    '--no-check-certificates',
-    '--no-warnings',
-    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    '--extractor-args', 'youtube:player_client=android,web'
-  );
+  ytDlpArgs.push('--no-check-certificates', '--no-warnings');
 
   if (jobState.format === 'mp3') {
     // Audio extraction parameters
