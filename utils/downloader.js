@@ -196,8 +196,9 @@ function executeDownload(jobState) {
   ytDlpArgs.push('--no-check-certificates', '--no-warnings');
 
   if (jobState.format === 'mp3') {
-    // Audio extraction parameters
+    // Audio extraction parameters with direct stream format selection
     ytDlpArgs.push(
+      '-f', 'ba/b',
       '-x',
       '--audio-format', 'mp3',
       '--audio-quality', '0',
@@ -208,7 +209,7 @@ function executeDownload(jobState) {
   } else {
     // Video parameters (MP4 combined audio/video or best video format)
     ytDlpArgs.push(
-      '-f', 'bestvideo+bestaudio/best',
+      '-f', 'bv*+ba/b',
       '--recode-video', 'mp4',
       '--no-playlist',
       '-o', jobState.targetFilePath,
@@ -364,17 +365,12 @@ async function executePlaylistDownload(jobState, tracks) {
     if (ffmpegPath && fs.existsSync(ffmpegPath)) {
       ytDlpArgs.push('--ffmpeg-location', ffmpegPath);
     }
-    ytDlpArgs.push(
-      '--no-check-certificates',
-      '--no-warnings',
-      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      '--extractor-args', 'youtube:player_client=android,web'
-    );
+    ytDlpArgs.push('--no-check-certificates', '--no-warnings');
 
     if (jobState.format === 'mp3') {
-      ytDlpArgs.push('-x', '--audio-format', 'mp3', '--audio-quality', '0', '--no-playlist', '-o', trackFilePath, targetUrl);
+      ytDlpArgs.push('-f', 'ba/b', '-x', '--audio-format', 'mp3', '--audio-quality', '0', '--no-playlist', '-o', trackFilePath, targetUrl);
     } else {
-      ytDlpArgs.push('-f', 'bestvideo+bestaudio/best', '--recode-video', 'mp4', '--no-playlist', '-o', trackFilePath, targetUrl);
+      ytDlpArgs.push('-f', 'bv*+ba/b', '--recode-video', 'mp4', '--no-playlist', '-o', trackFilePath, targetUrl);
     }
 
     try {
