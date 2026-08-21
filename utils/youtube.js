@@ -225,10 +225,60 @@ async function getVideoMetadata(input) {
       };
     }
   } catch (err) {
-    console.warn(`yt-search lookup failed for ${videoId}, using fallback:`, err.message);
+    console.warn(`yt-search lookup failed for ${videoId}:`, err.message);
   }
 
-  // Fallback default metadata structure if video lookup returned minimal data
+  // Fallback to yt-dlp --dump-json with android/web client flags for accurate metadata
+  try {
+    const jsonOutput = await new Promise((resolve, reject) => {
+      const cloudFlags = [
+        '--dump-json',
+        '--no-warnings',
+        '--no-check-certificates',
+        '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        '--extractor-args', 'youtube:player_client=android,web',
+        `https://www.youtube.com/watch?v=${videoId}`
+      ];
+      execFile('yt-dlp', cloudFlags, (err, stdout) => {
+        if (err) {
+          execFile('python', ['-m', 'yt_dlp', ...cloudFlags], (err2, stdout2) => {
+            if (err2) return reject(err2);
+            resolve(stdout2);
+          });
+          return;
+        }
+        resolve(stdout);
+      });
+    });
+
+    const data = JSON.parse(jsonOutput);
+    const safeTitle = data.title || data.fulltitle || `YouTube Video (${videoId})`;
+    const safeAuthor = data.uploader || data.channel || 'YouTube Channel';
+    const safeDesc = data.description || '';
+    const titleLower = safeTitle.toLowerCase();
+    const descLower = safeDesc.toLowerCase();
+    const isNoCopyright = titleLower.includes('no copyright') || descLower.includes('creative commons');
+
+    return {
+      id: videoId,
+      title: safeTitle,
+      artist: safeAuthor,
+      authorUrl: data.uploader_url || data.channel_url || '',
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      thumbnail: data.thumbnail || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      duration: formatSecondsToDuration(data.duration || 0),
+      seconds: data.duration || 0,
+      views: data.view_count || 0,
+      uploadDate: data.upload_date || 'Unknown',
+      description: safeDesc,
+      licenseInfo: isNoCopyright ? 'Creative Commons / Public Domain' : 'Standard YouTube License (User Permission Required)',
+      isPermitted: isNoCopyright
+    };
+  } catch (ytDlpErr) {
+    console.warn(`[getVideoMetadata] yt-dlp fallback failed for ${videoId}:`, ytDlpErr.message);
+  }
+
+  // Default fallback metadata structure
   return {
     id: videoId,
     title: `YouTube Video (${videoId})`,
