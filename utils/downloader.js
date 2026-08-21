@@ -171,13 +171,13 @@ async function prepareDownloadJob({ urlOrId, format = 'mp3', hasPermission = fal
 }
 
 /**
- * Execute yt-dlp child process safely
+ * Execute yt-dlp child process safely using yt-dlp-exec
  * @param {Object} jobState 
  */
 function executeDownload(jobState) {
   jobState.status = 'downloading';
 
-  const { cmd, argsPrefix } = getYtDlpCommand();
+  const ytDlpExec = require('yt-dlp-exec');
   const targetUrl = `https://www.youtube.com/watch?v=${jobState.videoId}`;
 
   let ffmpegPath = null;
@@ -187,66 +187,55 @@ function executeDownload(jobState) {
     console.warn('[Downloader] ffmpeg-static module not loaded:', e.message);
   }
 
-  let ytDlpArgs = [...argsPrefix];
+  const options = {
+    noCheckCertificates: true,
+    noWarnings: true,
+    noPlaylist: true,
+    output: jobState.targetFilePath
+  };
 
   if (ffmpegPath && fs.existsSync(ffmpegPath)) {
-    ytDlpArgs.push('--ffmpeg-location', ffmpegPath);
+    options.ffmpegLocation = ffmpegPath;
   }
-
-  ytDlpArgs.push('--no-check-certificates', '--no-warnings');
 
   if (jobState.format === 'mp3') {
-    // Audio extraction parameters with direct stream format selection
-    ytDlpArgs.push(
-      '-f', 'ba/b',
-      '-x',
-      '--audio-format', 'mp3',
-      '--audio-quality', '0',
-      '--no-playlist',
-      '-o', jobState.targetFilePath,
-      targetUrl
-    );
+    options.format = 'ba/b';
+    options.extractAudio = true;
+    options.audioFormat = 'mp3';
+    options.audioQuality = '0';
   } else {
-    // Video parameters (MP4 combined audio/video or best video format)
-    ytDlpArgs.push(
-      '-f', 'bv*+ba/b',
-      '--recode-video', 'mp4',
-      '--no-playlist',
-      '-o', jobState.targetFilePath,
-      targetUrl
-    );
+    options.format = 'bv*+ba/b';
+    options.recodeVideo = 'mp4';
   }
 
-  console.log(`[Downloader] Spawning ${cmd} for Job ${jobState.jobId}...`);
+  console.log(`[Downloader] Spawning yt-dlp-exec for Job ${jobState.jobId}...`);
 
-  const child = spawn(cmd, ytDlpArgs, { windowsHide: true });
+  const proc = ytDlpExec.exec(targetUrl, options);
 
-  child.stdout.on('data', (data) => {
-    const text = data.toString();
-    const match = text.match(/\[download\]\s+([\d\.]+)%/);
-    if (match && match[1]) {
-      const pct = parseFloat(match[1]);
-      if (!isNaN(pct)) {
-        jobState.progress = Math.min(99, Math.max(1, pct));
+  if (proc.stdout) {
+    proc.stdout.on('data', (data) => {
+      const text = data.toString();
+      const match = text.match(/\[download\]\s+([\d\.]+)%/);
+      if (match && match[1]) {
+        const pct = parseFloat(match[1]);
+        if (!isNaN(pct)) {
+          jobState.progress = Math.min(99, Math.max(1, pct));
+        }
       }
-    }
-  });
+    });
+  }
 
-  child.stderr.on('data', (data) => {
-    console.warn(`[Downloader yt-dlp stderr ${jobState.jobId}]:`, data.toString().trim());
-  });
+  if (proc.stderr) {
+    proc.stderr.on('data', (data) => {
+      console.warn(`[Downloader yt-dlp stderr ${jobState.jobId}]:`, data.toString().trim());
+    });
+  }
 
-  child.on('error', (err) => {
-    console.error(`[Downloader Error ${jobState.jobId}]:`, err);
-    jobState.status = 'failed';
-    jobState.error = `Download process failed to launch: ${err.message}`;
-  });
-
-  child.on('close', (code) => {
+  proc.then(() => {
     const filesInFolder = fs.existsSync(jobState.jobFolder) ? fs.readdirSync(jobState.jobFolder) : [];
     const createdFile = filesInFolder.find(f => !f.endsWith('.zip') && !fs.statSync(path.join(jobState.jobFolder, f)).isDirectory());
 
-    if (code === 0 && (fs.existsSync(jobState.targetFilePath) || createdFile)) {
+    if (fs.existsSync(jobState.targetFilePath) || createdFile) {
       if (!fs.existsSync(jobState.targetFilePath) && createdFile) {
         jobState.targetFilePath = path.join(jobState.jobFolder, createdFile);
         jobState.outputFilename = createdFile;
@@ -255,10 +244,14 @@ function executeDownload(jobState) {
       jobState.status = 'completed';
       jobState.progress = 100;
     } else {
-      console.error(`[Downloader Failed ${jobState.jobId}]: Exited with code ${code}`);
+      console.error(`[Downloader Failed ${jobState.jobId}]: Output file not found`);
       jobState.status = 'failed';
-      jobState.error = jobState.error || `Media processing failed (exit code ${code}). Check network or content availability.`;
+      jobState.error = 'Downloaded file was not found.';
     }
+  }).catch((err) => {
+    console.error(`[Downloader Error ${jobState.jobId}]:`, err.message);
+    jobState.status = 'failed';
+    jobState.error = err.message || 'Media processing failed. Check network or content availability.';
   });
 }
 
@@ -274,68 +267,67 @@ function executeDownload(jobState) {
 async function preparePlaylistDownloadJob({ playlistUrlOrId, selectedVideoIds = [], format = 'mp3', hasPermission = false }) {
   const { getPlaylistMetadata } = require('./youtube');
   
+  const playlistMetadata = await getPlaylistMetadata(playlistUrlOrId);
+
   if (!hasPermission) {
-    const error = new Error('Permission Required: Please confirm legal rights or permission to download this playlist content.');
+    const error = new Error('Permission Required: Downloads are restricted unless you confirm you own the rights or have explicit permission.');
     error.statusCode = 403;
     error.isCopyrightBlock = true;
     throw error;
   }
 
-  const playlistMetadata = await getPlaylistMetadata(playlistUrlOrId);
-  
-  // Enforce max 50 playlist tracks per batch download job
-  const MAX_PLAYLIST_TRACKS = 50;
-  const filteredTracks = (selectedVideoIds && selectedVideoIds.length > 0)
-    ? playlistMetadata.tracks.filter(t => selectedVideoIds.includes(t.id))
-    : playlistMetadata.tracks;
-
-  const targetTracks = filteredTracks.slice(0, MAX_PLAYLIST_TRACKS);
-
-  if (targetTracks.length === 0) {
-    throw new Error('No valid tracks selected for playlist download.');
-  }
-
   const selectedFormat = format.toLowerCase() === 'mp4' ? 'mp4' : 'mp3';
   const jobId = uuidv4();
   const jobFolder = path.join(TEMP_DIR, jobId);
-  const mediaSubfolder = path.join(jobFolder, 'media');
+  const mediaSubfolder = path.join(jobFolder, 'tracks');
 
   fs.mkdirSync(mediaSubfolder, { recursive: true });
 
-  const cleanPlaylistTitle = sanitize(playlistMetadata.title).substring(0, 80) || `Playlist_${jobId.substring(0,6)}`;
-  const zipFilename = `${cleanPlaylistTitle}_[${selectedFormat.toUpperCase()}].zip`;
-  const zipFilePath = path.join(jobFolder, zipFilename);
+  const cleanPlaylistTitle = sanitize(playlistMetadata.title).substring(0, 80) || `playlist_${playlistMetadata.id}`;
+  const zipOutputFilename = `${cleanPlaylistTitle}.zip`;
+  const zipFilePath = path.join(jobFolder, zipOutputFilename);
+
+  let filteredTracks = playlistMetadata.tracks;
+  if (selectedVideoIds.length > 0) {
+    filteredTracks = playlistMetadata.tracks.filter(t => selectedVideoIds.includes(t.id));
+  }
+
+  // Cap max playlist tracks to top 50
+  if (filteredTracks.length > 50) {
+    filteredTracks = filteredTracks.slice(0, 50);
+  }
 
   const jobState = {
     jobId,
-    isPlaylist: true,
-    playlistTitle: playlistMetadata.title,
-    totalTracks: targetTracks.length,
-    completedTracks: 0,
+    playlistId: playlistMetadata.id,
+    title: playlistMetadata.title,
     format: selectedFormat,
-    outputFilename: zipFilename,
-    targetFilePath: zipFilePath,
+    outputFilename: zipOutputFilename,
+    zipFilePath,
     jobFolder,
     mediaSubfolder,
     status: 'pending',
     progress: 0,
+    completedTracks: 0,
+    totalTracks: filteredTracks.length,
     currentTrackTitle: '',
     error: null,
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    isPlaylist: true
   };
 
   activeJobs.set(jobId, jobState);
 
-  // Execute async batch download process
-  executePlaylistDownload(jobState, targetTracks);
+  // Start background playlist batch download process
+  executePlaylistDownload(jobState, filteredTracks);
 
   return {
     jobId,
-    playlistTitle: playlistMetadata.title,
-    totalTracks: targetTracks.length,
-    outputFilename: zipFilename,
+    title: playlistMetadata.title,
     format: selectedFormat,
-    status: jobState.status
+    status: jobState.status,
+    totalTracks: filteredTracks.length,
+    outputFilename: zipOutputFilename
   };
 }
 
@@ -344,7 +336,7 @@ async function preparePlaylistDownloadJob({ playlistUrlOrId, selectedVideoIds = 
  */
 async function executePlaylistDownload(jobState, tracks) {
   jobState.status = 'downloading';
-  const { cmd, argsPrefix } = getYtDlpCommand();
+  const ytDlpExec = require('yt-dlp-exec');
 
   let ffmpegPath = null;
   try {
@@ -361,32 +353,29 @@ async function executePlaylistDownload(jobState, tracks) {
     const trackFilePath = path.join(jobState.mediaSubfolder, outputFilename);
     const targetUrl = `https://www.youtube.com/watch?v=${track.id}`;
 
-    let ytDlpArgs = [...argsPrefix];
+    const options = {
+      noCheckCertificates: true,
+      noWarnings: true,
+      noPlaylist: true,
+      output: trackFilePath
+    };
+
     if (ffmpegPath && fs.existsSync(ffmpegPath)) {
-      ytDlpArgs.push('--ffmpeg-location', ffmpegPath);
+      options.ffmpegLocation = ffmpegPath;
     }
-    ytDlpArgs.push('--no-check-certificates', '--no-warnings');
 
     if (jobState.format === 'mp3') {
-      ytDlpArgs.push('-f', 'ba/b', '-x', '--audio-format', 'mp3', '--audio-quality', '0', '--no-playlist', '-o', trackFilePath, targetUrl);
+      options.format = 'ba/b';
+      options.extractAudio = true;
+      options.audioFormat = 'mp3';
+      options.audioQuality = '0';
     } else {
-      ytDlpArgs.push('-f', 'bv*+ba/b', '--recode-video', 'mp4', '--no-playlist', '-o', trackFilePath, targetUrl);
+      options.format = 'bv*+ba/b';
+      options.recodeVideo = 'mp4';
     }
 
     try {
-      await new Promise((resolve, reject) => {
-        const child = spawn(cmd, ytDlpArgs, { windowsHide: true });
-        child.on('close', (code) => {
-          // Check if file exists under trackFilePath or any generated media file in mediaSubfolder
-          const downloadedFiles = fs.existsSync(jobState.mediaSubfolder) ? fs.readdirSync(jobState.mediaSubfolder) : [];
-          if (code === 0 && (fs.existsSync(trackFilePath) || downloadedFiles.length > jobState.completedTracks)) {
-            resolve();
-          } else {
-            reject(new Error(`Failed to download track ${track.title} (exit code ${code})`));
-          }
-        });
-        child.on('error', reject);
-      });
+      await ytDlpExec.exec(targetUrl, options);
       jobState.completedTracks++;
     } catch (err) {
       console.warn(`[Playlist Download Warning ${jobState.jobId}]: Skipping track ${track.title}:`, err.message);
