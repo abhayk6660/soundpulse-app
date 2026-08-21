@@ -70,6 +70,13 @@ scheduleAutoCleanup();
  */
 function getYtDlpCommand() {
   try {
+    const binPath = path.resolve(__dirname, '../node_modules/yt-dlp-exec/bin/yt-dlp') + (process.platform === 'win32' ? '.exe' : '');
+    if (fs.existsSync(binPath)) {
+      return { cmd: binPath, argsPrefix: [] };
+    }
+  } catch (e) {}
+
+  try {
     execSync('yt-dlp --version', { stdio: 'ignore' });
     return { cmd: 'yt-dlp', argsPrefix: [] };
   } catch (e) {

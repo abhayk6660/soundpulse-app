@@ -240,17 +240,27 @@ async function getVideoMetadata(input) {
         '--no-check-certificates',
         `https://www.youtube.com/watch?v=${videoId}`
       ];
-      execFile('yt-dlp', cloudFlags, (err, stdout) => {
+
+      const binPath = path.resolve(__dirname, '../node_modules/yt-dlp-exec/bin/yt-dlp') + (process.platform === 'win32' ? '.exe' : '');
+      const primaryCmd = fs.existsSync(binPath) ? binPath : 'yt-dlp';
+
+      execFile(primaryCmd, cloudFlags, (err, stdout) => {
         if (err) {
-          execFile('python3', ['-m', 'yt_dlp', ...cloudFlags], (err2, stdout2) => {
-            if (err2) {
-              execFile('python', ['-m', 'yt_dlp', ...cloudFlags], (err3, stdout3) => {
-                if (err3) return reject(err3);
-                resolve(stdout3);
+          execFile('yt-dlp', cloudFlags, (errYt, stdoutYt) => {
+            if (errYt) {
+              execFile('python3', ['-m', 'yt_dlp', ...cloudFlags], (err2, stdout2) => {
+                if (err2) {
+                  execFile('python', ['-m', 'yt_dlp', ...cloudFlags], (err3, stdout3) => {
+                    if (err3) return reject(err3);
+                    resolve(stdout3);
+                  });
+                  return;
+                }
+                resolve(stdout2);
               });
               return;
             }
-            resolve(stdout2);
+            resolve(stdoutYt);
           });
           return;
         }
@@ -353,7 +363,8 @@ async function getPlaylistMetadata(input) {
       '--no-warnings',
       '--no-check-certificates'
     ];
-    let cmd = 'yt-dlp';
+    const binPath = path.resolve(__dirname, '../node_modules/yt-dlp-exec/bin/yt-dlp') + (process.platform === 'win32' ? '.exe' : '');
+    let cmd = fs.existsSync(binPath) ? binPath : 'yt-dlp';
     let args = ['--dump-json', '--flat-playlist', ...cloudFlags, targetUrl];
 
     execFile(cmd, args, { maxBuffer: 20 * 1024 * 1024 }, (err, stdout) => {
