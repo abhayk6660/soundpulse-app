@@ -411,7 +411,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function selectPlaylistForDownload(playlist, selectedVideoIds) {
     isPlaylistMode = true;
-    currentSelectedPlaylist = { ...playlist, selectedVideoIds };
+    
+    // Limit batch download to 50 tracks maximum
+    let finalVideoIds = selectedVideoIds;
+    if (selectedVideoIds.length > 50) {
+      finalVideoIds = selectedVideoIds.slice(0, 50);
+      showToast('Batch download is limited to a maximum of 50 tracks. Processing top 50 selected songs.', 'warning');
+    }
+
+    currentSelectedPlaylist = { ...playlist, selectedVideoIds: finalVideoIds };
     permissionCheckbox.checked = false;
 
     selectedTrackDetail.innerHTML = `
@@ -419,10 +427,10 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="selected-info">
         <h3 class="selected-title"><i class="fa-solid fa-list-check"></i> ${escapeHtml(playlist.title)}</h3>
         <p class="selected-artist"><i class="fa-solid fa-user-astronaut"></i> Channel: ${escapeHtml(playlist.channel)}</p>
-        <p class="selected-meta"><i class="fa-solid fa-file-zipper"></i> Batch Download: ${selectedVideoIds.length} Selected Tracks (Packaged into .ZIP)</p>
+        <p class="selected-meta"><i class="fa-solid fa-file-zipper"></i> Batch Download: ${finalVideoIds.length} Selected Tracks (Packaged into .ZIP)</p>
         <div>
-          <span class="license-tag standard">
-            <i class="fa-solid fa-shield-cat"></i> YouTube Playlist Batch Download
+          <span class="license-tag cc-free">
+            <i class="fa-solid fa-shield-halved"></i> YouTube Playlist Batch Download (Max 50 Tracks)
           </span>
         </div>
       </div>

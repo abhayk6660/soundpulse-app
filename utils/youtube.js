@@ -292,13 +292,19 @@ async function getPlaylistMetadata(input) {
   const targetUrl = `https://www.youtube.com/playlist?list=${playlistId}`;
 
   return new Promise((resolve, reject) => {
+    const cloudFlags = [
+      '--no-warnings',
+      '--no-check-certificates',
+      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      '--extractor-args', 'youtube:player_client=android,web'
+    ];
     let cmd = 'yt-dlp';
-    let args = ['--dump-json', '--flat-playlist', '--no-warnings', targetUrl];
+    let args = ['--dump-json', '--flat-playlist', ...cloudFlags, targetUrl];
 
     execFile(cmd, args, { maxBuffer: 20 * 1024 * 1024 }, (err, stdout) => {
       if (err) {
         cmd = 'python';
-        args = ['-m', 'yt_dlp', '--dump-json', '--flat-playlist', '--no-warnings', targetUrl];
+        args = ['-m', 'yt_dlp', '--dump-json', '--flat-playlist', ...cloudFlags, targetUrl];
         execFile(cmd, args, { maxBuffer: 20 * 1024 * 1024 }, (err2, stdout2) => {
           if (err2) return reject(new Error(`Failed to fetch playlist metadata: ${err2.message}`));
           parsePlaylistOutput(playlistId, stdout2, resolve, reject);

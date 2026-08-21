@@ -189,7 +189,13 @@ function executeDownload(jobState) {
     ytDlpArgs.push('--ffmpeg-location', ffmpegPath);
   }
 
-  ytDlpArgs.push('--no-check-certificates', '--no-warnings');
+  // Cloud & Render compatibility flags (bypasses YouTube data-center IP blocks)
+  ytDlpArgs.push(
+    '--no-check-certificates',
+    '--no-warnings',
+    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    '--extractor-args', 'youtube:player_client=android,web'
+  );
 
   if (jobState.format === 'mp3') {
     // Audio extraction parameters
@@ -277,9 +283,14 @@ async function preparePlaylistDownloadJob({ playlistUrlOrId, selectedVideoIds = 
   }
 
   const playlistMetadata = await getPlaylistMetadata(playlistUrlOrId);
-  const targetTracks = (selectedVideoIds && selectedVideoIds.length > 0)
+  
+  // Enforce max 50 playlist tracks per batch download job
+  const MAX_PLAYLIST_TRACKS = 50;
+  const filteredTracks = (selectedVideoIds && selectedVideoIds.length > 0)
     ? playlistMetadata.tracks.filter(t => selectedVideoIds.includes(t.id))
     : playlistMetadata.tracks;
+
+  const targetTracks = filteredTracks.slice(0, MAX_PLAYLIST_TRACKS);
 
   if (targetTracks.length === 0) {
     throw new Error('No valid tracks selected for playlist download.');
@@ -355,7 +366,12 @@ async function executePlaylistDownload(jobState, tracks) {
     if (ffmpegPath && fs.existsSync(ffmpegPath)) {
       ytDlpArgs.push('--ffmpeg-location', ffmpegPath);
     }
-    ytDlpArgs.push('--no-check-certificates', '--no-warnings');
+    ytDlpArgs.push(
+      '--no-check-certificates',
+      '--no-warnings',
+      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      '--extractor-args', 'youtube:player_client=android,web'
+    );
 
     if (jobState.format === 'mp3') {
       ytDlpArgs.push('-x', '--audio-format', 'mp3', '--audio-quality', '0', '--no-playlist', '-o', trackFilePath, targetUrl);
