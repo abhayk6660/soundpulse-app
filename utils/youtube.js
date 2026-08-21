@@ -179,10 +179,12 @@ function parseYtDlpJsonLines(stdout, limit, resolve, reject) {
   }
 }
 
+const COOKIES_FILE = path.join(__dirname, '../cookies.txt');
+
 /**
- * Get detailed metadata for a single YouTube video by URL or ID
- * @param {string} input - URL or Video ID
- * @returns {Promise<Object>}
+ * Fetch full YouTube video metadata & license information
+ * @param {string} input - URL or video ID string
+ * @returns {Promise<Object>} Formatted track metadata object
  */
 async function getVideoMetadata(input) {
   const videoId = extractVideoId(input);
@@ -232,18 +234,21 @@ async function getVideoMetadata(input) {
     console.warn(`yt-search lookup failed for ${videoId}:`, err.message);
   }
 
-  // Fallback to yt-dlp --dump-json with android/web client flags for accurate metadata
+  // Fallback to yt-dlp --dump-json with android,tv_embedded client flags for accurate metadata
   try {
     const jsonOutput = await new Promise((resolve, reject) => {
       const cloudFlags = [
-        '--remote-components', 'ejs:github',
-        '--js-runtimes', 'node',
-        '--extractor-args', 'youtube:player_client=web_embedded,web',
+        '--extractor-args', 'youtube:player_client=android,tv_embedded',
         '--dump-json',
         '--no-warnings',
-        '--no-check-certificates',
-        `https://www.youtube.com/watch?v=${videoId}`
+        '--no-check-certificates'
       ];
+
+      if (fs.existsSync(COOKIES_FILE)) {
+        cloudFlags.push('--cookies', COOKIES_FILE);
+      }
+
+      cloudFlags.push(`https://www.youtube.com/watch?v=${videoId}`);
 
       const binPath = path.resolve(__dirname, '../node_modules/yt-dlp-exec/bin/yt-dlp') + (process.platform === 'win32' ? '.exe' : '');
       const primaryCmd = fs.existsSync(binPath) ? binPath : 'yt-dlp';
@@ -364,12 +369,14 @@ async function getPlaylistMetadata(input) {
 
   return new Promise((resolve, reject) => {
     const cloudFlags = [
-      '--remote-components', 'ejs:github',
-      '--js-runtimes', 'node',
-      '--extractor-args', 'youtube:player_client=web_embedded,web',
+      '--extractor-args', 'youtube:player_client=android,tv_embedded',
       '--no-warnings',
       '--no-check-certificates'
     ];
+
+    if (fs.existsSync(COOKIES_FILE)) {
+      cloudFlags.push('--cookies', COOKIES_FILE);
+    }
     const binPath = path.resolve(__dirname, '../node_modules/yt-dlp-exec/bin/yt-dlp') + (process.platform === 'win32' ? '.exe' : '');
     let cmd = fs.existsSync(binPath) ? binPath : 'yt-dlp';
     let args = ['--dump-json', '--flat-playlist', ...cloudFlags, targetUrl];

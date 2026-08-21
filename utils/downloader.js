@@ -16,6 +16,17 @@ if (!fs.existsSync(TEMP_DIR)) {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
 
+// Cookies support: If YOUTUBE_COOKIES env var is present, save to cookies.txt
+const COOKIES_FILE = path.join(__dirname, '../cookies.txt');
+if (process.env.YOUTUBE_COOKIES && !fs.existsSync(COOKIES_FILE)) {
+  try {
+    fs.writeFileSync(COOKIES_FILE, process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n'), 'utf8');
+    console.log('[Cookies] Successfully wrote cookies.txt from environment variable.');
+  } catch (e) {
+    console.warn('[Cookies] Failed to write cookies.txt:', e.message);
+  }
+}
+
 /**
  * Clean up job directory safely
  * @param {string} jobId 
@@ -188,14 +199,16 @@ function executeDownload(jobState) {
   }
 
   const options = {
-    remoteComponents: 'ejs:github',
-    jsRuntimes: 'node',
-    extractorArgs: 'youtube:player_client=web_embedded,web',
+    extractorArgs: 'youtube:player_client=android,tv_embedded',
     noCheckCertificates: true,
     noWarnings: true,
     noPlaylist: true,
     output: jobState.targetFilePath
   };
+
+  if (fs.existsSync(COOKIES_FILE)) {
+    options.cookies = COOKIES_FILE;
+  }
 
   if (ffmpegPath && fs.existsSync(ffmpegPath)) {
     options.ffmpegLocation = ffmpegPath;
@@ -357,14 +370,16 @@ async function executePlaylistDownload(jobState, tracks) {
     const targetUrl = `https://www.youtube.com/watch?v=${track.id}`;
 
     const options = {
-      remoteComponents: 'ejs:github',
-      jsRuntimes: 'node',
-      extractorArgs: 'youtube:player_client=web_embedded,web',
+      extractorArgs: 'youtube:player_client=android,tv_embedded',
       noCheckCertificates: true,
       noWarnings: true,
       noPlaylist: true,
       output: trackFilePath
     };
+
+    if (fs.existsSync(COOKIES_FILE)) {
+      options.cookies = COOKIES_FILE;
+    }
 
     if (ffmpegPath && fs.existsSync(ffmpegPath)) {
       options.ffmpegLocation = ffmpegPath;
