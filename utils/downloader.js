@@ -188,6 +188,7 @@ function executeDownload(jobState) {
   }
 
   const options = {
+    jsRuntimes: 'node',
     noCheckCertificates: true,
     noWarnings: true,
     noPlaylist: true,
@@ -354,6 +355,7 @@ async function executePlaylistDownload(jobState, tracks) {
     const targetUrl = `https://www.youtube.com/watch?v=${track.id}`;
 
     const options = {
+      jsRuntimes: 'node',
       noCheckCertificates: true,
       noWarnings: true,
       noPlaylist: true,
