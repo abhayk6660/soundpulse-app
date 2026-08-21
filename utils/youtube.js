@@ -190,8 +190,11 @@ async function getVideoMetadata(input) {
   }
 
   try {
-    // Attempt yt-search lookup first for quick metadata
-    const videoData = await ytSearch({ videoId });
+    // Attempt yt-search lookup with a 2.5s timeout first
+    const videoData = await Promise.race([
+      ytSearch({ videoId }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('yt-search timeout')), 2500))
+    ]);
     if (videoData) {
       const safeTitle = typeof videoData.title === 'string' ? videoData.title : String(videoData.title || `YouTube Video (${videoId})`);
       const safeAuthor = videoData.author && typeof videoData.author.name === 'string' ? videoData.author.name : (typeof videoData.author === 'string' ? videoData.author : 'YouTube Channel');
