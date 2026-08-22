@@ -16,23 +16,59 @@ if (!fs.existsSync(TEMP_DIR)) {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
 
+function normalizeCookieContent(content) {
+  if (!content) return '';
+  const lines = content.split(/[\r\n]+/);
+  const normalizedLines = [];
+  
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+    if (line.startsWith('#')) {
+      normalizedLines.push(line);
+      continue;
+    }
+    // Convert space-separated cookie lines into valid tab-separated Netscape format
+    const parts = line.split(/\s+/);
+    if (parts.length >= 7) {
+      const domain = parts[0];
+      const flag = parts[1];
+      const path = parts[2];
+      const secure = parts[3];
+      const expiration = parts[4];
+      const name = parts[5];
+      const value = parts.slice(6).join(' ');
+      normalizedLines.push(`${domain}\t${flag}\t${path}\t${secure}\t${expiration}\t${name}\t${value}`);
+    } else {
+      normalizedLines.push(line);
+    }
+  }
+  return '# Netscape HTTP Cookie File\n' + normalizedLines.join('\n') + '\n';
+}
+
 // Cookies support: If YOUTUBE_COOKIES or YOUTUBE_COOKIES_BASE64 is present, save to cookies.txt
 const COOKIES_FILE = path.join(__dirname, '../cookies.txt');
 if (process.env.YOUTUBE_COOKIES_BASE64) {
   try {
     const decoded = Buffer.from(process.env.YOUTUBE_COOKIES_BASE64, 'base64').toString('utf8');
-    fs.writeFileSync(COOKIES_FILE, decoded, 'utf8');
-    console.log('[Cookies] Successfully wrote cookies.txt from YOUTUBE_COOKIES_BASE64.');
+    fs.writeFileSync(COOKIES_FILE, normalizeCookieContent(decoded), 'utf8');
+    console.log('[Cookies] Successfully wrote normalized cookies.txt from YOUTUBE_COOKIES_BASE64.');
   } catch (e) {
     console.warn('[Cookies] Failed to decode YOUTUBE_COOKIES_BASE64:', e.message);
   }
 } else if (process.env.YOUTUBE_COOKIES) {
   try {
-    fs.writeFileSync(COOKIES_FILE, process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n'), 'utf8');
-    console.log('[Cookies] Successfully wrote cookies.txt from YOUTUBE_COOKIES.');
+    const raw = process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n');
+    fs.writeFileSync(COOKIES_FILE, normalizeCookieContent(raw), 'utf8');
+    console.log('[Cookies] Successfully wrote normalized cookies.txt from YOUTUBE_COOKIES.');
   } catch (e) {
     console.warn('[Cookies] Failed to write cookies.txt:', e.message);
   }
+} else if (fs.existsSync(COOKIES_FILE)) {
+  try {
+    const existing = fs.readFileSync(COOKIES_FILE, 'utf8');
+    fs.writeFileSync(COOKIES_FILE, normalizeCookieContent(existing), 'utf8');
+  } catch (e) {}
 }
 
 /**
