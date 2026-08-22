@@ -248,6 +248,10 @@ async function getVideoMetadata(input) {
         cloudFlags.push('--cookies', COOKIES_FILE);
       }
 
+      if (process.env.YOUTUBE_PROXY || process.env.HTTP_PROXY) {
+        cloudFlags.push('--proxy', process.env.YOUTUBE_PROXY || process.env.HTTP_PROXY);
+      }
+
       cloudFlags.push(`https://www.youtube.com/watch?v=${videoId}`);
 
       const binPath = path.resolve(__dirname, '../node_modules/yt-dlp-exec/bin/yt-dlp') + (process.platform === 'win32' ? '.exe' : '');
@@ -376,6 +380,10 @@ async function getPlaylistMetadata(input) {
 
     if (fs.existsSync(COOKIES_FILE)) {
       cloudFlags.push('--cookies', COOKIES_FILE);
+    }
+
+    if (process.env.YOUTUBE_PROXY || process.env.HTTP_PROXY) {
+      cloudFlags.push('--proxy', process.env.YOUTUBE_PROXY || process.env.HTTP_PROXY);
     }
     const binPath = path.resolve(__dirname, '../node_modules/yt-dlp-exec/bin/yt-dlp') + (process.platform === 'win32' ? '.exe' : '');
     let cmd = fs.existsSync(binPath) ? binPath : 'yt-dlp';

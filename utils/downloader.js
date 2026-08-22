@@ -16,12 +16,20 @@ if (!fs.existsSync(TEMP_DIR)) {
   fs.mkdirSync(TEMP_DIR, { recursive: true });
 }
 
-// Cookies support: If YOUTUBE_COOKIES env var is present, save to cookies.txt
+// Cookies support: If YOUTUBE_COOKIES or YOUTUBE_COOKIES_BASE64 is present, save to cookies.txt
 const COOKIES_FILE = path.join(__dirname, '../cookies.txt');
-if (process.env.YOUTUBE_COOKIES && !fs.existsSync(COOKIES_FILE)) {
+if (process.env.YOUTUBE_COOKIES_BASE64) {
+  try {
+    const decoded = Buffer.from(process.env.YOUTUBE_COOKIES_BASE64, 'base64').toString('utf8');
+    fs.writeFileSync(COOKIES_FILE, decoded, 'utf8');
+    console.log('[Cookies] Successfully wrote cookies.txt from YOUTUBE_COOKIES_BASE64.');
+  } catch (e) {
+    console.warn('[Cookies] Failed to decode YOUTUBE_COOKIES_BASE64:', e.message);
+  }
+} else if (process.env.YOUTUBE_COOKIES) {
   try {
     fs.writeFileSync(COOKIES_FILE, process.env.YOUTUBE_COOKIES.replace(/\\n/g, '\n'), 'utf8');
-    console.log('[Cookies] Successfully wrote cookies.txt from environment variable.');
+    console.log('[Cookies] Successfully wrote cookies.txt from YOUTUBE_COOKIES.');
   } catch (e) {
     console.warn('[Cookies] Failed to write cookies.txt:', e.message);
   }
@@ -210,6 +218,10 @@ function executeDownload(jobState) {
     options.cookies = COOKIES_FILE;
   }
 
+  if (process.env.YOUTUBE_PROXY || process.env.HTTP_PROXY) {
+    options.proxy = process.env.YOUTUBE_PROXY || process.env.HTTP_PROXY;
+  }
+
   if (ffmpegPath && fs.existsSync(ffmpegPath)) {
     options.ffmpegLocation = ffmpegPath;
   }
@@ -379,6 +391,10 @@ async function executePlaylistDownload(jobState, tracks) {
 
     if (fs.existsSync(COOKIES_FILE)) {
       options.cookies = COOKIES_FILE;
+    }
+
+    if (process.env.YOUTUBE_PROXY || process.env.HTTP_PROXY) {
+      options.proxy = process.env.YOUTUBE_PROXY || process.env.HTTP_PROXY;
     }
 
     if (ffmpegPath && fs.existsSync(ffmpegPath)) {
