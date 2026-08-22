@@ -1,3 +1,13 @@
+---
+title: SoundPulse Music Downloader
+emoji: 🎵
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # SoundPulse - Song & YouTube Track Download Tool 🎵
 
 SoundPulse is a full-stack web application for searching, identifying, previewing metadata, and downloading permitted music tracks and videos from YouTube or song name searches.
