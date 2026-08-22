@@ -207,7 +207,9 @@ function executeDownload(jobState) {
   }
 
   const options = {
-    extractorArgs: 'youtube:player_client=android,tv_embedded',
+    remoteComponents: 'ejs:github',
+    jsRuntimes: 'node',
+    extractorArgs: 'youtube:player_client=web,android',
     noCheckCertificates: true,
     noWarnings: true,
     noPlaylist: true,
@@ -227,12 +229,12 @@ function executeDownload(jobState) {
   }
 
   if (jobState.format === 'mp3') {
-    options.format = 'ba/b';
+    options.format = 'bestaudio/best';
     options.extractAudio = true;
     options.audioFormat = 'mp3';
     options.audioQuality = '0';
   } else {
-    options.format = 'bv*+ba/b';
+    options.format = 'bestvideo+bestaudio/best';
     options.recodeVideo = 'mp4';
   }
 
@@ -382,7 +384,9 @@ async function executePlaylistDownload(jobState, tracks) {
     const targetUrl = `https://www.youtube.com/watch?v=${track.id}`;
 
     const options = {
-      extractorArgs: 'youtube:player_client=android,tv_embedded',
+      remoteComponents: 'ejs:github',
+      jsRuntimes: 'node',
+      extractorArgs: 'youtube:player_client=web,android',
       noCheckCertificates: true,
       noWarnings: true,
       noPlaylist: true,
@@ -402,12 +406,12 @@ async function executePlaylistDownload(jobState, tracks) {
     }
 
     if (jobState.format === 'mp3') {
-      options.format = 'ba/b';
+      options.format = 'bestaudio/best';
       options.extractAudio = true;
       options.audioFormat = 'mp3';
       options.audioQuality = '0';
     } else {
-      options.format = 'bv*+ba/b';
+      options.format = 'bestvideo+bestaudio/best';
       options.recodeVideo = 'mp4';
     }
 

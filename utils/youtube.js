@@ -238,7 +238,9 @@ async function getVideoMetadata(input) {
   try {
     const jsonOutput = await new Promise((resolve, reject) => {
       const cloudFlags = [
-        '--extractor-args', 'youtube:player_client=android,tv_embedded',
+        '--remote-components', 'ejs:github',
+        '--js-runtimes', 'node',
+        '--extractor-args', 'youtube:player_client=web,android',
         '--dump-json',
         '--no-warnings',
         '--no-check-certificates'
@@ -373,7 +375,9 @@ async function getPlaylistMetadata(input) {
 
   return new Promise((resolve, reject) => {
     const cloudFlags = [
-      '--extractor-args', 'youtube:player_client=android,tv_embedded',
+      '--remote-components', 'ejs:github',
+      '--js-runtimes', 'node',
+      '--extractor-args', 'youtube:player_client=web,android',
       '--no-warnings',
       '--no-check-certificates'
     ];
