@@ -245,7 +245,7 @@ function executeDownload(jobState) {
   const options = {
     remoteComponents: 'ejs:github',
     jsRuntimes: 'node',
-    extractorArgs: 'youtube:player_client=web,android',
+    extractorArgs: 'youtube:player_client=ios,android',
     noCheckCertificates: true,
     noWarnings: true,
     noPlaylist: true,
@@ -422,7 +422,7 @@ async function executePlaylistDownload(jobState, tracks) {
     const options = {
       remoteComponents: 'ejs:github',
       jsRuntimes: 'node',
-      extractorArgs: 'youtube:player_client=web,android',
+      extractorArgs: 'youtube:player_client=ios,android',
       noCheckCertificates: true,
       noWarnings: true,
       noPlaylist: true,

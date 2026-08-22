@@ -240,7 +240,7 @@ async function getVideoMetadata(input) {
       const cloudFlags = [
         '--remote-components', 'ejs:github',
         '--js-runtimes', 'node',
-        '--extractor-args', 'youtube:player_client=web,android',
+        '--extractor-args', 'youtube:player_client=ios,android',
         '--dump-json',
         '--no-warnings',
         '--no-check-certificates'
@@ -377,7 +377,7 @@ async function getPlaylistMetadata(input) {
     const cloudFlags = [
       '--remote-components', 'ejs:github',
       '--js-runtimes', 'node',
-      '--extractor-args', 'youtube:player_client=web,android',
+      '--extractor-args', 'youtube:player_client=ios,android',
       '--no-warnings',
       '--no-check-certificates'
     ];
